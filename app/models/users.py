@@ -12,7 +12,8 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
-)
+
+    text,)
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -26,7 +27,7 @@ class User(Base, SoftDeleteMixin, TimestampMixin):
     __tablename__ = "users"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, server_default=func.text("gen_random_uuid()")
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
     )
 
     # Данные из MAX API
@@ -43,7 +44,7 @@ class User(Base, SoftDeleteMixin, TimestampMixin):
     )
 
     # Статус / блокировка
-    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=func.true(), default=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"), default=True)
     is_blocked: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=func.false(), default=False)
     block_reason: Mapped[str | None] = mapped_column(Text)
     blocked_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
@@ -67,7 +68,7 @@ class UserRole(Base, ActiveMixin):
     __table_args__ = (UniqueConstraint("user_id", "role_id"),)
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, server_default=func.text("gen_random_uuid()")
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
     )
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     role_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("roles.id"), nullable=False)
@@ -86,7 +87,7 @@ class UserDepartment(Base, ActiveMixin):
     __table_args__ = (UniqueConstraint("user_id", "department_id"),)
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, server_default=func.text("gen_random_uuid()")
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
     )
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     department_id: Mapped[uuid.UUID] = mapped_column(
@@ -106,7 +107,7 @@ class ExecutorGroup(Base, ActiveMixin, SoftDeleteMixin, TimestampMixin):
     __tablename__ = "executor_groups"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, server_default=func.text("gen_random_uuid()")
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
@@ -119,7 +120,7 @@ class ExecutorGroupMember(Base, ActiveMixin):
     __table_args__ = (UniqueConstraint("group_id", "user_id"),)
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, server_default=func.text("gen_random_uuid()")
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
     )
     group_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("executor_groups.id"), nullable=False
@@ -139,7 +140,7 @@ class AddressResponsible(Base, ActiveMixin):
     __tablename__ = "address_responsibles"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, server_default=func.text("gen_random_uuid()")
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
     )
     address_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("addresses.id"), nullable=False)
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)

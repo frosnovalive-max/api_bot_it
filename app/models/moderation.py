@@ -10,7 +10,8 @@ from sqlalchemy import (
     String,
     Text,
     func,
-)
+
+    text,)
 from sqlalchemy.dialects.postgresql import INET, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -24,7 +25,7 @@ class BlacklistEntry(Base):
     __tablename__ = "blacklist"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, server_default=func.text("gen_random_uuid()")
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
     )
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     reason: Mapped[str] = mapped_column(Text, nullable=False)
@@ -34,7 +35,7 @@ class BlacklistEntry(Base):
     )
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     is_active: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=func.true(), default=True
+        Boolean, nullable=False, server_default=text("true"), default=True
     )
 
     user: Mapped["User"] = relationship(foreign_keys=[user_id])  # noqa
@@ -47,7 +48,7 @@ class Complaint(Base, SoftDeleteMixin):
     __tablename__ = "complaints"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, server_default=func.text("gen_random_uuid()")
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
     )
     complainant_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
@@ -84,7 +85,7 @@ class AuditLog(Base):
     __tablename__ = "audit_log"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, server_default=func.text("gen_random_uuid()")
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
     )
     user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
     action: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -106,7 +107,7 @@ class WebAccount(Base, SoftDeleteMixin):
     __tablename__ = "web_accounts"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, server_default=func.text("gen_random_uuid()")
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), unique=True, nullable=False
@@ -114,7 +115,7 @@ class WebAccount(Base, SoftDeleteMixin):
     login: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     is_active: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=func.true(), default=True
+        Boolean, nullable=False, server_default=text("true"), default=True
     )
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
