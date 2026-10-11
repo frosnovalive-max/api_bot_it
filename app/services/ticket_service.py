@@ -23,6 +23,30 @@ NON_ADMIN_ALLOWED_STATUSES = {"new", "in_progress", "done", "canceled"}
 CLOSED_STATUS_CODES = {"closed", "done"}
 
 
+class TicketActor:
+    """Контекст действия: кто и откуда выполняет операцию."""
+
+    def __init__(
+        self,
+        user_id: uuid.UUID,
+        roles: set[str],
+        ip: str | None = None,
+        default_source_id: uuid.UUID | None = None,
+    ) -> None:
+        self.user_id = user_id
+        self.roles = roles
+        self.ip = ip
+        self.default_source_id = default_source_id
+
+    @property
+    def is_admin(self) -> bool:
+        return is_admin(self.roles)
+
+    @property
+    def is_staff(self) -> bool:
+        return is_staff(self.roles)
+
+
 class TicketService:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
@@ -274,29 +298,3 @@ def _now():
     from datetime import datetime, timezone
 
     return datetime.now(timezone.utc)
-
-
-class TicketActor:
-    """Контекст действия: кто и откуда выполняет операцию."""
-
-    def __init__(
-        self,
-        user_id: uuid.UUID,
-        roles: set[str],
-        ip: str | None = None,
-        default_source_id: uuid.UUID | None = None,
-    ) -> None:
-        self.user_id = user_id
-        self.roles = roles
-        self.ip = ip
-        self.default_source_id = default_source_id
-
-    @property
-    def is_admin(self) -> bool:
-        return is_admin(self.roles)
-
-    @property
-    def is_staff(self) -> bool:
-        from app.core.security import is_staff
-
-        return is_staff(self.roles)

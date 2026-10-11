@@ -10,6 +10,7 @@ from sqlalchemy import (
     String,
     Text,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -24,7 +25,7 @@ class NotificationTemplate(Base, ActiveMixin):
     __tablename__ = "notification_templates"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, server_default=func.text("gen_random_uuid()")
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
     )
     code: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -41,7 +42,7 @@ class Notification(Base, SoftDeleteMixin):
     __tablename__ = "notifications"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, server_default=func.text("gen_random_uuid()")
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
     )
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     template_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -65,7 +66,7 @@ class NotificationHistory(Base):
     __tablename__ = "notification_history"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, server_default=func.text("gen_random_uuid()")
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
     )
     notification_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("notifications.id"), nullable=False

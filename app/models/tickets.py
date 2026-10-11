@@ -14,6 +14,7 @@ from sqlalchemy import (
     String,
     Text,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -31,7 +32,7 @@ class Ticket(Base, SoftDeleteMixin, TimestampMixin):
     __tablename__ = "tickets"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, server_default=func.text("gen_random_uuid()")
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
     )
     ticket_number: Mapped[int] = mapped_column(
         BigInteger, Identity(), unique=True, nullable=False
@@ -88,7 +89,7 @@ class TicketMessage(Base, SoftDeleteMixin):
     __tablename__ = "ticket_messages"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, server_default=func.text("gen_random_uuid()")
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
     )
     ticket_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tickets.id"), nullable=False)
     author_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
@@ -110,7 +111,7 @@ class TicketAttachment(Base, SoftDeleteMixin):
     __tablename__ = "ticket_attachments"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, server_default=func.text("gen_random_uuid()")
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
     )
     ticket_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tickets.id"), nullable=False)
     message_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("ticket_messages.id"))
@@ -133,7 +134,7 @@ class TicketHistory(Base):
     __tablename__ = "ticket_history"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, server_default=func.text("gen_random_uuid()")
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
     )
     ticket_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tickets.id"), nullable=False)
     changed_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
