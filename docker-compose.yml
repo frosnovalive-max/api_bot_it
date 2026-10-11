@@ -1,0 +1,87 @@
+# ============================================================================
+# Docker Compose — IT-служба колледжа (REST API + PostgreSQL 15)
+#
+#   docker compose up -d --build     # собрать и запустить всё
+#   Swagger: http://localhost:8000/docs
+#
+# Значения по умолчанию можно переопределить в файле .env рядом с этим файлом
+# (cp .env.example .env).
+# ============================================================================
+
+x-app-env: &app-env
+  DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-it_support}
+  DB_ECHO: ${DB_ECHO:-false}
+  DEBUG: ${DEBUG:-false}
+  JWT_SECRET_KEY: ${JWT_SECRET_KEY:-CHANGE_ME_IN_PRODUCTION}
+  JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+  JWT_ACCESS_TOKEN_EXPIRE_MINUTES: ${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:-120}
+  SERVICE_API_KEY: ${SERVICE_API_KEY:-CHANGE_ME_SERVICE_KEY}
+  CORS_ORIGINS: ${CORS_ORIGINS:-["*"]}
+  # Примечание: MAX_API_* сюда не передаются — токен MAX живёт только в приложении Бота.
+
+services:
+  # ------------------------------------------------------------------ БД ---
+  postgres:
+    image: postgres:15-alpine
+    container_name: it_support_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-it_support}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      # Доступ к БД с хоста (например, для DBeaver/psql). Уберите, если не нужен.
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-it_support}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ------------------------------------------------------------------ API ---
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: it_support_api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: false
+    environment: *app-env
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ------------------------------------------------ Миграции + сидирование ---
+  # Одноразовый сервис: ждёт БД, применяет alembic upgrade head, затем seed.
+  # Запуск:  docker compose run --rm migrate
+  # Автозапуск вместе с приложением:  docker compose --profile setup up -d --build
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: it_support_migrate
+    profiles: ["setup"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: false
+    environment: *app-env
+    command: >
+      sh -c "alembic upgrade head && python scripts/seed.py"
+
+volumes:
+  postgres_data:

@@ -108,7 +108,7 @@ class RoleLimit(Base, ActiveMixin):
     max_tickets_per_day: Mapped[int | None] = mapped_column(Integer)
     min_rating: Mapped[int | None] = mapped_column(Integer)
     require_moderation: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=func.false(), default=False
+        Boolean, nullable=False, server_default=text("false"), default=False
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

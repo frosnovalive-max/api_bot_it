@@ -16,6 +16,7 @@ from app.schemas.tickets import (
     TicketDuplicate,
     TicketStatusChange,
 )
+from app.services.notification_service import NotificationQueueService
 from app.services.points_service import PointsService
 
 #: Статусы, которые может ставить не-админ
@@ -54,6 +55,9 @@ class TicketService:
         self.users = UserRepository(session)
         self.points = PointsService(session)
         self.moderation = ModerationRepository(session)
+        # Паттерн «Очереди в БД»: уведомления только пишутся в notifications,
+        # доставку в MAX выполняет отдельное приложение (Бот).
+        self.notifications = NotificationQueueService(session)
 
     # ---------- Создание ----------
 
@@ -116,6 +120,10 @@ class TicketService:
             entity_id=ticket.id,
             new_values={"title": ticket.title, "ticket_number": ticket.ticket_number},
             ip_address=actor.ip,
+        )
+        # Очередь уведомлений: автора информируем о приёме заявки
+        await self.notifications.ticket_created(
+            author_id=user.id, ticket_id=ticket.id, ticket_number=ticket.ticket_number
         )
         return await self.repo.get_full(ticket.id)
 
@@ -183,6 +191,13 @@ class TicketService:
             new_values={"assigned_to": str(executor_id)},
             ip_address=actor.ip,
         )
+        # Очередь уведомлений: исполнитель узнаёт о назначенной заявке
+        await self.notifications.ticket_assigned(
+            executor_id=executor_id,
+            ticket_id=ticket_id,
+            ticket_number=ticket.ticket_number,
+            title=ticket.title,
+        )
         return await self.repo.get_full(ticket_id)
 
     # ---------- Статусы ----------
@@ -230,6 +245,15 @@ class TicketService:
             new_values={"status": new_status.code},
             ip_address=actor.ip,
         )
+        # Очередь уведомлений: автор узнаёт о смене статуса
+        if old_code != new_status.code:
+            await self.notifications.ticket_status_changed(
+                user_id=ticket.author_id,
+                ticket_id=ticket_id,
+                ticket_number=ticket.ticket_number,
+                old_status=old_code or "?",
+                new_status=new_status.code,
+            )
         return await self.repo.get_full(ticket_id)
 
     # ---------- Дубли ----------
@@ -272,6 +296,13 @@ class TicketService:
             entity_id=ticket_id,
             new_values={"duplicate_of": str(original.id)},
             ip_address=actor.ip,
+        )
+        # Очередь уведомлений: автор узнаёт о дубле
+        await self.notifications.ticket_duplicate(
+            user_id=ticket.author_id,
+            ticket_id=ticket_id,
+            ticket_number=ticket.ticket_number,
+            original_number=original.ticket_number,
         )
         return await self.repo.get_full(ticket_id)
 
