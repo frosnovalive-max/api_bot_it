@@ -35,7 +35,7 @@ class User(Base, SoftDeleteMixin, TimestampMixin):
     first_name: Mapped[str | None] = mapped_column(String(255))
     name: Mapped[str | None] = mapped_column(String(255))
     username: Mapped[str | None] = mapped_column(String(255))
-    is_bot: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=func.false(), default=False)
+    is_bot: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"), default=False)
     last_activity_time: Mapped[int | None] = mapped_column(BigInteger)
     raw_profile: Mapped[dict | None] = mapped_column(JSONB)
 
@@ -45,7 +45,7 @@ class User(Base, SoftDeleteMixin, TimestampMixin):
 
     # Статус / блокировка
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"), default=True)
-    is_blocked: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=func.false(), default=False)
+    is_blocked: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"), default=False)
     block_reason: Mapped[str | None] = mapped_column(Text)
     blocked_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
     blocked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

@@ -95,7 +95,7 @@ class TicketMessage(Base, SoftDeleteMixin):
     author_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     message: Mapped[str] = mapped_column(Text, nullable=False)
     is_internal: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=func.false(), default=False
+        Boolean, nullable=False, server_default=text("false"), default=False
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

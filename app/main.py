@@ -7,7 +7,6 @@ from fastapi.responses import JSONResponse
 
 from app.api.v1.router import api_v1_router
 from app.core.config import settings
-from app.services.max_api_service import MaxApiError
 
 logging.basicConfig(
     level=logging.INFO,
@@ -43,10 +42,11 @@ tags_metadata = [
         "Чтение — всем аутентифицированным, мутации — только админам.",
     },
     {
-        "name": "Integrations (MAX)",
-        "description": "Интеграция с мессенджером MAX (https://dev.max.ru/docs): приём вебхуков, "
-        "отправка сообщений/кнопок пользователям, прокси-запрос профилей. "
-        "Эндпоинты используются будущим ботом (сервисный API-ключ).",
+        "name": "Notifications Queue",
+        "description": "Очередь уведомлений (паттерн «Очереди в БД»). Core API только формирует "
+        "записи в `notifications`/`notification_history`; фактическую доставку в мессенджер MAX "
+        "выполняет отдельное приложение — Бот, выбирая pending-очередь и отчитываясь о статусе "
+        "доставки по сервисному ключу.",
     },
 ]
 
@@ -100,7 +100,9 @@ app = FastAPI(
         f"{settings.app_description}\n\n"
         "## Аутентификация\n"
         "* **Веб-панель** — JWT Bearer-токен (`POST /api/v1/auth/login`).\n"
-        "* **Бот/внутренние сервисы** — заголовок `X-API-Key` (сервисный токен).\n\n"
+        "* **Бот/внутренние сервисы** — заголовок `X-API-Key` (сервисный токен).\n"
+        "* Бот работает как обычный REST-клиент: сам общается с MAX API, "
+        "синхронизирует профили (`PATCH /users/by-max-id/{id}/profile`) и доставляет очередь уведомлений.\n\n"
         "## Соглашения\n"
         "* Внешний номер тикета — `ticket_number`, внутренний UUID — `id`.\n"
         "* Удаление — мягкое (`is_deleted`), REST DELETE выполняет UPDATE.\n"
@@ -133,7 +135,7 @@ app.include_router(api_v1_router, prefix=settings.api_v1_prefix)
 
 
 @app.get("/", tags=["Health"], summary="Корневой/health-check эндпоинт")
-async def health() -> dict:
+async def root() -> dict:
     """Возвращает базовую информацию о сервисе. Полезен для мониторинга и быстрой проверки запуска."""
     return {
         "service": settings.app_name,
@@ -143,20 +145,13 @@ async def health() -> dict:
     }
 
 
+@app.get("/health", tags=["Health"], summary="Health-check для Docker/orchestrator")
+async def health() -> dict:
+    """Лёгкая проверка живости сервиса (используется healthcheck'ом в docker-compose)."""
+    return {"status": "ok"}
+
+
 # ---------------------------------------------------------- Обработчики ошибок
-@app.exception_handler(MaxApiError)
-async def max_api_error_handler(request: Request, exc: MaxApiError) -> JSONResponse:
-    """Ошибка обращения к MAX API → 502 Bad Gateway (внешний сервис недоступен/ошибся)."""
-    logger.warning("MaxApiError on %s %s: %s", request.method, request.url.path, exc.detail)
-    return JSONResponse(
-        status_code=502,
-        content={
-            "detail": f"Ошибка взаимодействия с MAX API: {exc.detail}",
-            "upstream_status": exc.status_code,
-        },
-    )
-
-
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
     """Стандартная обработка HTTPException в едином формате {\"detail\": ...}."""

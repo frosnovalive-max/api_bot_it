@@ -91,3 +91,26 @@ class ComplaintOut(BaseModel):
     reviewed_at: datetime | None
     resolution_note: str | None
     created_at: datetime
+
+
+class UserProfileSyncRequest(BaseModel):
+    """PUT /users/by-max-id/{max_user_id}/profile — синхронизация профиля из MAX.
+
+    Вызывается Ботом (сервисный X-API-Key). API НЕ ходит в MAX сам: бот получает
+    профиль из MAX API и перекладывает его сюда. Поле raw_profile хранится как
+    есть, без строгой валидации.
+    """
+
+    first_name: str | None = Field(None, max_length=255, examples=["Иван"])
+    name: str | None = Field(None, max_length=255, description="Фамилия / отображаемое имя", examples=["Петров"])
+    username: str | None = Field(None, max_length=255, examples=["ivan_petrov"])
+    is_bot: bool = Field(False, examples=[False])
+    last_activity_time: int | None = Field(
+        None, description="Unix timestamp (мс) последней активности", examples=[1734987654321]
+    )
+    raw_profile: dict | None = Field(
+        None,
+        description="Сырой JSON-ответ профиля из MAX API (хранится без жёсткой валидации)",
+        examples=[{"user_id": 123456789, "name": "Петров", "first_name": "Иван", "username": "ivan_petrov"}],
+    )
+    default_address_id: uuid.UUID | None = None

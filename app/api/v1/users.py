@@ -5,7 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user, make_actor, require_admin
+from app.api.deps import get_current_user, get_service_or_user, make_actor, require_admin
 from app.api.v1.common import ERROR_403, ERROR_404, build_page
 from app.core.database import get_db
 from app.core.security import create_access_token, hash_password, is_md5_hash, verify_password
@@ -19,6 +19,7 @@ from app.schemas.users import (
     ComplaintOut,
     LoginRequest,
     TokenResponse,
+    UserProfileSyncRequest,
     UserOut,
     UserUpdate,
 )
@@ -175,6 +176,54 @@ async def update_user(
         await repo.set_roles(user, role_codes)
     await session.flush()
     return _user_out(await repo.get_with_roles(id))
+
+
+@router.patch(
+    "/users/by-max-id/{max_user_id}/profile",
+    response_model=UserOut,
+    summary="Синхронизация профиля пользователя из MAX (для бота)",
+    description=(
+        "Стандартный REST-эндпоинт обновления профиля: **Бот** получает профиль из MAX API "
+        "и перекладывает его сюда (Core API сам в MAX не ходит). Если пользователя с таким "
+        "`max_user_id` нет — он создаётся. Поле `raw_profile` (JSONB) сохраняется как есть, "
+        "без жёсткой валидации. Доступно по сервисному ключу `X-API-Key` или JWT администратора."
+    ),
+    responses={403: ERROR_403},
+)
+async def sync_profile_from_max(
+    max_user_id: int,
+    payload: UserProfileSyncRequest,
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    actor: Annotated[object, Depends(get_service_or_user)],
+):
+    from app.core.security import is_admin
+
+    if not getattr(request.state, "via_service_key", False) and not is_admin(
+        UserRepository.role_codes_of(actor)
+    ):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Синхронизация профиля доступна боту (X-API-Key) или админу")
+
+    repo = UserRepository(session)
+    user = await repo.get_by_max_id(max_user_id)
+    fields = payload.model_dump(exclude_unset=True)
+    created = False
+    if user is None:
+        user = await repo.create(max_user_id=max_user_id, **fields)
+        created = True
+    else:
+        for k, v in fields.items():
+            setattr(user, k, v)
+        await session.flush()
+    await ModerationRepository(session).write_audit(
+        user_id=None,
+        action="profile_sync_created" if created else "profile_sync_updated",
+        entity_type="user",
+        entity_id=user.id,
+        new_values={"max_user_id": max_user_id},
+        ip_address=request.client.host if request.client else None,
+    )
+    return _user_out(await repo.get_with_roles(user.id))
 
 
 @router.patch(

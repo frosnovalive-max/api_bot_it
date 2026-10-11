@@ -28,12 +28,11 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 120
 
-    # --- Внутренние сервисы (бот) ---
+    # --- Внутренние сервисы (бот MAX как REST-клиент) ---
+    # Примечание: токены/URL MAX API здесь НЕ хранятся. Core API не общается
+    # с мессенджером напрямую; доставка уведомлений в MAX — ответственность
+    # отдельного приложения (Бота), которое ходит в API как обычный клиент.
     service_api_key: str = "CHANGE_ME_SERVICE_KEY"
-
-    # --- MAX API (dev.max.ru/docs) ---
-    max_api_base_url: str = "https://maxapi.ru/api/v1"  # базовый URL MAX API
-    max_api_token: str = ""  # токен бота MAX
 
     # --- CORS ---
     cors_origins: list[str] = ["*"]

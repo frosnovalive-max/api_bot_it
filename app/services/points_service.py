@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.gamification import UserPoints
 from app.repositories.misc_repos import PointsRepository
 from app.repositories.users_repo import UserRepository
+from app.services.notification_service import NotificationQueueService
 
 
 class PointsService:
@@ -14,6 +15,8 @@ class PointsService:
         self.session = session
         self.repo = PointsRepository(session)
         self.users = UserRepository(session)
+        # Паттерн «Очереди в БД»: уведомления только пишутся в notifications.
+        self.notifications = NotificationQueueService(session)
 
     async def get_balance(self, user_id: uuid.UUID) -> UserPoints:
         return await self.repo.get_or_create(user_id)
@@ -41,6 +44,10 @@ class PointsService:
             performed_by=performed_by,
             rule_id=rule.id if rule else None,
             ticket_id=ticket_id,
+        )
+        # Очередь уведомлений: фиксируем факт изменения баланса
+        await self.notifications.points_changed(
+            user_id=user_id, amount=amount, reason=reason, balance=balance.balance, ticket_id=ticket_id
         )
         return balance, tx
 
